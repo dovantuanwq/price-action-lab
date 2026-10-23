@@ -194,7 +194,21 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border
   <details class="datasrc" id="dataSrc" open><summary>Nguồn dữ liệu</summary><div class="data">
     <button id="btnSynth" class="btn" title="Tạo bộ dữ liệu giả lập mới, không biết trước kết quả">Dữ liệu mô phỏng mới</button>
     <span class="sep" aria-hidden="true"></span>
-    <input id="sym" class="in w-sym" value="BTCUSDT" aria-label="Cặp giao dịch" spellcheck="false">
+    <input id="sym" class="in w-sym" value="BTCUSDT" list="symList" aria-label="Cặp giao dịch" title="Chọn từ danh sách hoặc gõ mã cặp bất kỳ trên Binance, rồi bấm Enter" spellcheck="false" autocomplete="off">
+    <datalist id="symList">
+      <option value="BTCUSDT">Bitcoin</option>
+      <option value="ETHUSDT">Ethereum</option>
+      <option value="SOLUSDT">Solana</option>
+      <option value="BNBUSDT">BNB</option>
+      <option value="XRPUSDT">XRP</option>
+      <option value="DOGEUSDT">Dogecoin</option>
+      <option value="ADAUSDT">Cardano</option>
+      <option value="AVAXUSDT">Avalanche</option>
+      <option value="LINKUSDT">Chainlink</option>
+      <option value="TONUSDT">Toncoin</option>
+      <option value="SUIUSDT">Sui</option>
+      <option value="ETHBTC">ETH / BTC</option>
+    </datalist>
     <select id="ivSel" class="in" aria-label="Khung thời gian">
       <option value="15m">15m</option><option value="1h" selected>1H</option><option value="4h">4H</option><option value="1d">1D</option>
     </select>
@@ -921,6 +935,7 @@ $('#btnBuy').onclick=()=>openPosition('long');
 $('#btnSell').onclick=()=>openPosition('short');
 $('#btnSynth').onclick=()=>{ const seed=(Math.random()*1e9)|0; setBars(genSynthetic(3000,seed),'Mô phỏng #'+(seed%10000),3600); };
 $('#btnBinance').onclick=loadBinance;
+$('#sym').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); loadBinance(); } });
 $('#csv').onchange=async e=>{
   const f=e.target.files[0]; if(!f) return;
   const bars=parseCSV(await f.text()); e.target.value='';
