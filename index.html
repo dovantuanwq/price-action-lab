@@ -116,6 +116,33 @@ label.file{position:relative}
 .mode-hint{padding:7px 14px;font-size:12.5px;background:var(--accent-soft);color:var(--accent);border-bottom:1px solid var(--border)}
 .chart-err{padding:40px 20px;text-align:center;color:var(--muted)}
 
+/* Chỉ báo */
+.o-chart{position:relative}
+.chart-wrap{position:relative}
+.ind-legend{position:absolute;left:10px;top:8px;z-index:3;display:flex;flex-direction:column;gap:3px;pointer-events:none;max-width:calc(100% - 110px)}
+.ind-item{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-family:var(--mono);color:var(--muted);pointer-events:auto;align-self:flex-start;padding:2px 4px 2px 6px;border-radius:5px;background:color-mix(in srgb,var(--surface) 82%,transparent)}
+.ind-item .nm{color:var(--text);font-family:var(--font);font-weight:500;white-space:nowrap}
+.ind-item .vals{display:inline-flex;gap:7px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ind-item .ib{appearance:none;border:0;background:transparent;color:var(--muted);cursor:pointer;width:22px;height:22px;display:grid;place-items:center;border-radius:4px;padding:0;opacity:.75}
+.ind-item .ib:hover{background:var(--surface-2);color:var(--text);opacity:1}
+.ind-item .ib svg{width:14px;height:14px}
+.pane{border-top:1px solid var(--border);position:relative}
+.pane .ind-legend{top:4px}
+.pane-chart{height:130px}
+.ind-menu{position:absolute;z-index:20;top:54px;right:14px;width:min(340px,calc(100% - 28px));background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;max-height:70vh;overflow:auto}
+.ind-menu h3{font-size:12px;font-weight:600;color:var(--muted);margin:8px 10px 4px;text-transform:uppercase;letter-spacing:.04em}
+.ind-menu button{display:block;width:100%;text-align:left;appearance:none;border:0;background:transparent;border-radius:7px;padding:8px 10px;cursor:pointer}
+.ind-menu button:hover,.ind-menu button:focus-visible{background:var(--surface-2)}
+.ind-menu button b{display:block;font-weight:600;font-size:13px}
+.ind-menu button span{display:block;font-size:12px;color:var(--muted)}
+.ind-pop{position:fixed;z-index:30;width:250px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:12px}
+.ind-pop h4{margin:0 0 10px;font-size:14px}
+.ind-pop label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:8px;color:var(--muted)}
+.ind-pop .in{width:90px}
+.ind-pop input[type=color]{width:90px;height:32px;padding:2px;border:1px solid var(--border);border-radius:7px;background:var(--surface);cursor:pointer}
+.ind-pop .row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+@media (max-width:760px){.pane-chart{height:110px}.ind-legend{max-width:calc(100% - 90px)}}
+
 /* Order ticket */
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .field > span{font-size:12px;color:var(--muted)}
@@ -239,6 +266,7 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border
         </div>
         <div class="grp" id="tfGroup"></div>
         <div class="grp">
+          <button id="btnInd" class="btn" title="Phím I" aria-haspopup="true" aria-expanded="false">Chỉ báo</button>
           <button id="mLevel" class="btn" title="Phím L">Vẽ mức giá</button>
           <button id="btnUndo" class="btn ghost">Hoàn tác mức</button>
           <button id="btnClearLv" class="btn ghost">Xóa các mức</button>
@@ -247,7 +275,12 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border
       </div>
       <div id="modeHint" class="mode-hint" hidden></div>
       <div id="hud" class="hud"></div>
-      <div id="chart" class="chart"></div>
+      <div class="chart-wrap">
+        <div id="chart" class="chart"></div>
+        <div id="indLegend" class="ind-legend"></div>
+      </div>
+      <div id="panes"></div>
+      <div id="indMenu" class="ind-menu" hidden role="menu"></div>
       <div id="chartErr" class="chart-err" hidden>Không tải được thư viện biểu đồ. Hãy kiểm tra kết nối Internet rồi mở lại file.</div>
     </div>
 
@@ -334,6 +367,7 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border
         <kbd>Shift →</kbd><span>Tiến 10 nến</span>
         <kbd>←</kbd><span>Lùi 1 nến</span>
         <kbd>Shift ←</kbd><span>Lùi 10 nến</span>
+        <kbd>I</kbd><span>Thêm chỉ báo</span>
         <kbd>Cách</kbd><span>Tự chạy / dừng</span>
         <kbd>B</kbd> <span>Mua</span>
         <kbd>S</kbd><span>Bán</span>
@@ -354,6 +388,7 @@ kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border
   <button class="btn sell" data-q="sell">Bán</button>
 </nav>
 
+<div class="ind-pop" id="indPop" hidden role="dialog" aria-label="Cài đặt chỉ báo"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -367,7 +402,7 @@ const S = {
   bars:[], cursor:0, tfMult:1, intervalSec:3600, symbol:'Mô phỏng', dec:2,
   levels:[], mode:null, position:null, trades:[], markers:[],
   startBalance:10000, riskPct:1, feePct:0.05, nBars:3000,
-  playing:false, timer:null, hideTime:false,
+  playing:false, timer:null, hideTime:false, inds:[], vis:[],
   lines:[]
 };
 
@@ -382,11 +417,12 @@ function load(){
       if(d.riskPct > 0) S.riskPct = d.riskPct;
       if(d.feePct != null) S.feePct = d.feePct;
       if([3000,5000,10000,20000,50000].includes(d.nBars)) S.nBars = d.nBars;
+      if(Array.isArray(d.inds)) S._indCfg = d.inds;
     }
   }catch(e){}
 }
 function save(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify({trades:S.trades,startBalance:S.startBalance,riskPct:S.riskPct,feePct:S.feePct,nBars:S.nBars})); }catch(e){}
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({trades:S.trades,startBalance:S.startBalance,riskPct:S.riskPct,feePct:S.feePct,nBars:S.nBars,inds:(S.inds||[]).map(i=>({type:i.type,p:i.p,color:i.color}))})); }catch(e){}
 }
 function balance(){ return S.startBalance + S.trades.reduce((a,t)=>a+t.pnl,0); }
 
@@ -424,7 +460,8 @@ function genSynthetic(n, seed){
     const open = price, close = open*Math.exp(ret);
     let wu = Math.abs(gauss(r))*vol*0.5, wd = Math.abs(gauss(r))*vol*0.5;
     if(r()<0.025){ if(r()<0.5) wd += vol*(1.5+r()*2.5); else wu += vol*(1.5+r()*2.5); }
-    out.push({time:t, open, high:Math.max(open,close)*(1+wu), low:Math.min(open,close)*(1-wd), close});
+    const volume = 900*(0.5+r()*0.7)*(0.6+Math.abs(ret)/vol*0.8);
+    out.push({time:t, open, high:Math.max(open,close)*(1+wu), low:Math.min(open,close)*(1-wd), close, volume});
     price = close; t += 3600;
   }
   return out;
@@ -458,7 +495,7 @@ async function loadBinance(){
       if(d.length<lim) break;
     }
     if(all.length<200) throw new Error('Dữ liệu quá ít để luyện tập (cần ít nhất 200 nến).');
-    const bars = all.map(k=>({time:Math.floor(k[0]/1000), open:+k[1], high:+k[2], low:+k[3], close:+k[4]}));
+    const bars = all.map(k=>({time:Math.floor(k[0]/1000), open:+k[1], high:+k[2], low:+k[3], close:+k[4], volume:+k[5]}));
     setBars(dedupe(bars), sym, IV[iv]);
     toast(bars.length < want
       ? `Binance chỉ có ${bars.length.toLocaleString('vi-VN')} nến ${sym} ${tfLabel(IV[iv])} trong khoảng này.`
@@ -496,7 +533,9 @@ function parseCSV(text){
     }
     const o=+c[1], h=+c[2], l=+c[3], cl=+c[4];
     if(!isFinite(ts) || ![o,h,l,cl].every(isFinite)) continue;
-    out.push({time:Math.floor(ts), open:o, high:Math.max(h,o,cl), low:Math.min(l,o,cl), close:cl});
+    const bar={time:Math.floor(ts), open:o, high:Math.max(h,o,cl), low:Math.min(l,o,cl), close:cl};
+    if(c.length>5 && c[5]!=='' && isFinite(+c[5])) bar.volume=+c[5];
+    out.push(bar);
   }
   return dedupe(out);
 }
@@ -517,13 +556,19 @@ const chart = LC.createChart($('#chart'), {
 });
 const series = chart.addCandlestickSeries();
 
-function applyTheme(){
-  chart.applyOptions({
+const PSW = 84; // độ rộng trục giá chung để các khung thẳng hàng
+function themeChart(c){
+  c.applyOptions({
     layout:{background:{type:'solid',color:cssVar('--surface')}, textColor:cssVar('--muted'), fontFamily:'IBM Plex Mono, ui-monospace, monospace', fontSize:11},
     grid:{vertLines:{color:cssVar('--grid')}, horzLines:{color:cssVar('--grid')}},
-    rightPriceScale:{borderColor:cssVar('--border')},
+    rightPriceScale:{borderColor:cssVar('--border'), minimumWidth:PSW},
     timeScale:{borderColor:cssVar('--border')}
   });
+}
+function applyTheme(){
+  themeChart(chart);
+  (S.inds||[]).forEach(i=>{ if(i.pane) themeChart(i.pane.chart); styleInd(i); });
+  if(S.vis && S.vis.length) refreshIndicators(true);
   const u=cssVar('--up'), d=cssVar('--down');
   series.applyOptions({upColor:u,downColor:d,borderUpColor:u,borderDownColor:d,wickUpColor:u,wickDownColor:d});
   S.levels.forEach(l=>l.line.applyOptions({color:cssVar('--level')}));
@@ -532,15 +577,15 @@ function applyTheme(){
 try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); }catch(e){}
 
 function bucketOf(t){ const w=S.intervalSec*S.tfMult; return Math.floor(t/w)*w; }
-function plain(b){ return {time:b.time, open:b.open, high:b.high, low:b.low, close:b.close}; }
+function plain(b){ return {time:b.time, open:b.open, high:b.high, low:b.low, close:b.close, volume:b.volume}; }
 function visible(){
   const arr = S.bars.slice(0, S.cursor+1);
   if(S.tfMult===1) return arr.map(plain);
   const out=[]; let cur=null;
   for(const b of arr){
     const k=bucketOf(b.time);
-    if(!cur || cur.time!==k){ cur={time:k,open:b.open,high:b.high,low:b.low,close:b.close}; out.push(cur); }
-    else { cur.high=Math.max(cur.high,b.high); cur.low=Math.min(cur.low,b.low); cur.close=b.close; }
+    if(!cur || cur.time!==k){ cur={time:k,open:b.open,high:b.high,low:b.low,close:b.close,volume:b.volume}; out.push(cur); }
+    else { cur.high=Math.max(cur.high,b.high); cur.low=Math.min(cur.low,b.low); cur.close=b.close; if(b.volume!=null) cur.volume=(cur.volume||0)+b.volume; }
   }
   return out;
 }
@@ -557,8 +602,10 @@ function currentBar(){
 function renderAll(fit){
   const v = visible();
   series.setData(v);
+  refreshIndicators(true, v);
   renderMarkers();
   if(fit) chart.timeScale().setVisibleLogicalRange({from:Math.max(0,v.length-130), to:v.length+10});
+  syncPanes();
   updateHUD();
 }
 function renderMarkers(){
@@ -617,12 +664,280 @@ chart.subscribeClick(param=>{
   onOrderInput();
 });
 
+
+/* ---------- Chỉ báo kỹ thuật ---------- */
+const ALT = '#ff9800';
+const PALETTE = ['#2962ff','#f59e0b','#a855f7','#e91e63','#00a3a3','#795548','#7cb342'];
+function nan(n){ return new Array(n).fill(NaN); }
+function sma(src,p){ const o=nan(src.length); let s=0,c=0;
+  for(let i=0;i<src.length;i++){ const x=src[i]; if(!isFinite(x)){ s=0;c=0; continue; } s+=x; c++; if(c>p){ s-=src[i-p]; c=p; } if(c===p) o[i]=s/p; } return o; }
+function ema(src,p){ const o=nan(src.length), k=2/(p+1); let prev=NaN, s=0, c=0;
+  for(let i=0;i<src.length;i++){ const x=src[i]; if(!isFinite(x)) continue;
+    if(!isFinite(prev)){ s+=x; c++; if(c===p){ prev=s/p; o[i]=prev; } }
+    else { prev=x*k+prev*(1-k); o[i]=prev; } } return o; }
+function rma(src,p){ const o=nan(src.length); let prev=NaN, s=0, c=0;
+  for(let i=0;i<src.length;i++){ const x=src[i]; if(!isFinite(x)) continue;
+    if(!isFinite(prev)){ s+=x; c++; if(c===p){ prev=s/p; o[i]=prev; } }
+    else { prev=(prev*(p-1)+x)/p; o[i]=prev; } } return o; }
+const closes = b => b.map(x=>x.close);
+const IND = {
+  sma:{name:'MA', full:'Đường trung bình động đơn giản', group:'overlay',
+    params:[{k:'period',l:'Chu kỳ',v:20,min:1,max:500}], lines:[{k:'v'}],
+    label:p=>`MA ${p.period}`, calc:(b,p)=>({v:sma(closes(b),p.period)})},
+  ema:{name:'EMA', full:'Đường trung bình động hàm mũ', group:'overlay',
+    params:[{k:'period',l:'Chu kỳ',v:50,min:1,max:500}], lines:[{k:'v'}],
+    label:p=>`EMA ${p.period}`, calc:(b,p)=>({v:ema(closes(b),p.period)})},
+  bb:{name:'Bollinger Bands', full:'Dải biến động quanh đường trung bình', group:'overlay',
+    params:[{k:'period',l:'Chu kỳ',v:20,min:2,max:500},{k:'mult',l:'Độ lệch chuẩn',v:2,min:0.1,max:10,step:0.1}],
+    lines:[{k:'up',w:1},{k:'mid',w:1,dash:true},{k:'lo',w:1}],
+    label:p=>`BB ${p.period} ${p.mult}`,
+    calc:(b,p)=>{ const c=closes(b), m=sma(c,p.period), up=nan(c.length), lo=nan(c.length);
+      for(let i=p.period-1;i<c.length;i++){ if(!isFinite(m[i])) continue; let q=0; for(let j=i-p.period+1;j<=i;j++) q+=(c[j]-m[i])**2;
+        const sd=Math.sqrt(q/p.period); up[i]=m[i]+p.mult*sd; lo[i]=m[i]-p.mult*sd; }
+      return {up, mid:m, lo}; }},
+  vol:{name:'Khối lượng', full:'Volume dạng cột ở đáy biểu đồ giá', group:'overlay',
+    params:[], lines:[{k:'v',type:'hist',fmt:'vol'}], label:()=>'Vol',
+    calc:b=>({v:b.map(x=>x.volume!=null?x.volume:NaN)})},
+  rsi:{name:'RSI', full:'Chỉ số sức mạnh tương đối (khung riêng)', group:'pane',
+    params:[{k:'period',l:'Chu kỳ',v:14,min:2,max:200}], lines:[{k:'v',fmt:'2'}], levels:[70,30], range:[0,100],
+    label:p=>`RSI ${p.period}`,
+    calc:(b,p)=>{ const c=closes(b), g=nan(c.length), l=nan(c.length);
+      for(let i=1;i<c.length;i++){ const d=c[i]-c[i-1]; g[i]=Math.max(d,0); l[i]=Math.max(-d,0); }
+      const ag=rma(g,p.period), al=rma(l,p.period);
+      return {v:ag.map((x,i)=>isFinite(x)&&isFinite(al[i]) ? (al[i]===0?100:100-100/(1+x/al[i])) : NaN)}; }},
+  macd:{name:'MACD', full:'Hội tụ phân kỳ trung bình động (khung riêng)', group:'pane',
+    params:[{k:'fast',l:'Nhanh',v:12,min:1,max:200},{k:'slow',l:'Chậm',v:26,min:2,max:400},{k:'signal',l:'Tín hiệu',v:9,min:1,max:200}],
+    lines:[{k:'hist',type:'hist'},{k:'macd'},{k:'sig',alt:true}],
+    label:p=>`MACD ${p.fast} ${p.slow} ${p.signal}`,
+    calc:(b,p)=>{ const c=closes(b), f=ema(c,p.fast), s=ema(c,p.slow), m=f.map((x,i)=>x-s[i]), sg=ema(m,p.signal);
+      return {macd:m, sig:sg, hist:m.map((x,i)=>x-sg[i])}; }},
+  stoch:{name:'Stochastic', full:'Dao động ngẫu nhiên %K, %D (khung riêng)', group:'pane',
+    params:[{k:'k',l:'%K',v:14,min:1,max:200},{k:'sk',l:'Làm mượt %K',v:3,min:1,max:50},{k:'d',l:'%D',v:3,min:1,max:50}],
+    lines:[{k:'k',fmt:'2'},{k:'d',fmt:'2',alt:true}], levels:[80,20], range:[0,100],
+    label:p=>`Stoch ${p.k} ${p.sk} ${p.d}`,
+    calc:(b,p)=>{ const raw=nan(b.length);
+      for(let i=p.k-1;i<b.length;i++){ let hh=-Infinity, ll=Infinity; for(let j=i-p.k+1;j<=i;j++){ hh=Math.max(hh,b[j].high); ll=Math.min(ll,b[j].low); }
+        raw[i]= hh===ll ? 50 : (b[i].close-ll)/(hh-ll)*100; }
+      const k=sma(raw,p.sk); return {k, d:sma(k,p.d)}; }},
+  atr:{name:'ATR', full:'Biên độ dao động trung bình (khung riêng)', group:'pane',
+    params:[{k:'period',l:'Chu kỳ',v:14,min:1,max:200}], lines:[{k:'v'}],
+    label:p=>`ATR ${p.period}`,
+    calc:(b,p)=>{ const tr=b.map((x,i)=> i===0 ? x.high-x.low : Math.max(x.high-x.low, Math.abs(x.high-b[i-1].close), Math.abs(x.low-b[i-1].close)));
+      return {v:rma(tr,p.period)}; }}
+};
+let indSeq=0;
+function alpha(c,a){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return c; const n=parseInt(m[1],16); return `rgba(${n>>16},${n>>8&255},${n&255},${a})`; }
+function lineColor(ind,l){ return l.alt ? ALT : ind.color; }
+function fmtFor(ind,l){
+  if(l.fmt==='vol') return {type:'volume'};
+  if(l.fmt==='2') return {type:'price',precision:2,minMove:0.01};
+  return {type:'price',precision:S.dec,minMove:Math.pow(10,-S.dec)};
+}
+function createPane(){
+  const el=document.createElement('div'); el.className='pane';
+  el.innerHTML='<div class="pane-chart"></div><div class="ind-legend"></div>';
+  $('#panes').appendChild(el);
+  const c=LC.createChart(el.querySelector('.pane-chart'), {
+    autoSize:true, crosshair:{mode:LC.CrosshairMode.Normal},
+    timeScale:{visible:false, rightOffset:10}, localization:{locale:'vi-VN'},
+    rightPriceScale:{minimumWidth:PSW, scaleMargins:{top:0.12,bottom:0.08}}
+  });
+  themeChart(c);
+  c.timeScale().subscribeVisibleLogicalRangeChange(r=>syncRange(c,r));
+  c.subscribeCrosshairMove(pr=>updateLegendValues(pr.time));
+  return {el, chart:c, legend:el.querySelector('.ind-legend')};
+}
+function buildIndSeries(ind){
+  const def=IND[ind.type];
+  if(def.group==='pane') ind.pane=createPane();
+  const target = ind.pane ? ind.pane.chart : chart;
+  ind.series={}; ind.lv=[];
+  def.lines.forEach(l=>{
+    const base={priceLineVisible:false, lastValueVisible:true, priceFormat:fmtFor(ind,l)};
+    if(l.type==='hist'){
+      if(!ind.pane){ base.priceScaleId='vol'; base.lastValueVisible=false; }
+      ind.series[l.k]=target.addHistogramSeries(base);
+    } else {
+      ind.series[l.k]=target.addLineSeries(Object.assign(base,{lineWidth:l.w||2, crosshairMarkerRadius:3, lineStyle:l.dash?LC.LineStyle.Dashed:LC.LineStyle.Solid}));
+    }
+  });
+  if(ind.type==='vol'){ chart.priceScale('vol').applyOptions({scaleMargins:{top:0.82,bottom:0}}); volMargins(); }
+  if(def.range){ const r=def.range; Object.values(ind.series).forEach(s=>s.applyOptions({autoscaleInfoProvider:()=>({priceRange:{minValue:r[0],maxValue:r[1]}})})); }
+  if(def.levels){ const s=ind.series[def.lines[0].k];
+    def.levels.forEach(v=>ind.lv.push(s.createPriceLine({price:v, color:cssVar('--muted'), lineWidth:1, lineStyle:LC.LineStyle.Dashed, axisLabelVisible:false}))); }
+  styleInd(ind);
+}
+function volMargins(){
+  const on=S.inds.some(i=>i.type==='vol');
+  chart.priceScale('right').applyOptions({scaleMargins: on ? {top:0.08,bottom:0.22} : {top:0.1,bottom:0.1}});
+}
+function styleInd(ind){
+  const def=IND[ind.type];
+  def.lines.forEach(l=>{ const s=ind.series[l.k]; if(!s) return;
+    if(l.type!=='hist') s.applyOptions({color:lineColor(ind,l), priceFormat:fmtFor(ind,l)});
+    else s.applyOptions({priceFormat:fmtFor(ind,l)}); });
+  (ind.lv||[]).forEach(x=>x.applyOptions({color:cssVar('--muted')}));
+}
+function histColor(ind,i,arr,v){
+  if(ind.type==='vol') return alpha(v[i].close>=v[i].open ? cssVar('--up') : cssVar('--down'), 0.45);
+  const x=arr[i], prev=i>0?arr[i-1]:NaN, grow=!isFinite(prev)||Math.abs(x)>=Math.abs(prev);
+  return alpha(x>=0 ? cssVar('--up') : cssVar('--down'), grow ? 0.75 : 0.4);
+}
+function computeInd(ind, v, full){
+  const def=IND[ind.type];
+  ind.out = def.calc(v, ind.p);
+  def.lines.forEach(l=>{
+    const arr=ind.out[l.k], s=ind.series[l.k];
+    const pt=i=>{ const x=arr[i]; if(!isFinite(x)) return {time:v[i].time}; const o={time:v[i].time, value:x}; if(l.type==='hist') o.color=histColor(ind,i,arr,v); return o; };
+    if(full){ const d=new Array(v.length); for(let i=0;i<v.length;i++) d[i]=pt(i); s.setData(d); }
+    else if(v.length){ s.update(pt(v.length-1)); }
+  });
+}
+function refreshIndicators(full, v){
+  S.vis = v || visible();
+  if(!S.vis.length) return;
+  S.inds.forEach(i=>{ if(full) styleInd(i); computeInd(i, S.vis, full); });
+  if(full) syncPanes();
+  updateLegendValues(null);
+}
+let syncing=false;
+function syncRange(src, r){
+  if(syncing || !r) return;
+  syncing=true;
+  try{ [chart].concat(S.inds.filter(i=>i.pane).map(i=>i.pane.chart)).forEach(c=>{ if(c!==src) c.timeScale().setVisibleLogicalRange(r); }); }
+  finally{ syncing=false; }
+}
+function syncPanes(){ syncRange(chart, chart.timeScale().getVisibleLogicalRange()); }
+chart.timeScale().subscribeVisibleLogicalRangeChange(r=>syncRange(chart,r));
+chart.subscribeCrosshairMove(pr=>{
+  updateLegendValues(pr.time);
+  S.inds.forEach(i=>{ if(!i.pane) return; const c=i.pane.chart;
+    if(pr.time==null || typeof c.setCrosshairPosition!=='function'){ if(c.clearCrosshairPosition) c.clearCrosshairPosition(); return; }
+    const idx=idxOf(pr.time), k=IND[i.type].lines.find(l=>l.type!=='hist')||IND[i.type].lines[0], val=idx<0?NaN:i.out[k.k][idx];
+    if(isFinite(val)) c.setCrosshairPosition(val, pr.time, i.series[k.k]); else if(c.clearCrosshairPosition) c.clearCrosshairPosition();
+  });
+});
+function idxOf(t){
+  const v=S.vis; let lo=0, hi=v.length-1;
+  while(lo<=hi){ const m=(lo+hi)>>1; if(v[m].time===t) return m; if(v[m].time<t) lo=m+1; else hi=m-1; }
+  return -1;
+}
+const ICON_CFG='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h10"/><circle cx="6" cy="4" r="1.6" fill="var(--surface)"/><circle cx="10.5" cy="8" r="1.6" fill="var(--surface)"/><circle cx="5" cy="12" r="1.6" fill="var(--surface)"/></svg>';
+const ICON_DEL='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+function legendItem(ind){
+  return `<div class="ind-item" data-uid="${ind.uid}"><span class="nm" style="color:${ind.type==='vol'?'var(--text)':ind.color}">${esc(IND[ind.type].label(ind.p))}</span><span class="vals"></span>`
+    + `${IND[ind.type].params.length?`<button class="ib" data-act="cfg" title="Cài đặt" aria-label="Cài đặt ${esc(IND[ind.type].name)}">${ICON_CFG}</button>`:''}`
+    + `<button class="ib" data-act="del" title="Xóa" aria-label="Xóa ${esc(IND[ind.type].name)}">${ICON_DEL}</button></div>`;
+}
+function renderLegends(){
+  $('#indLegend').innerHTML = S.inds.filter(i=>!i.pane).map(legendItem).join('');
+  S.inds.filter(i=>i.pane).forEach(i=>{ i.pane.legend.innerHTML = legendItem(i); });
+  updateLegendValues(null);
+}
+function fmtVal(ind,l,x){
+  if(!isFinite(x)) return '—';
+  if(l.fmt==='vol') return Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(x);
+  if(l.fmt==='2') return x.toFixed(2);
+  return fpd(x, S.dec);
+}
+function updateLegendValues(t){
+  if(!S.inds.length || !S.vis.length) return;
+  const idx = t==null ? S.vis.length-1 : idxOf(t);
+  S.inds.forEach(ind=>{
+    const el=document.querySelector(`.ind-item[data-uid="${ind.uid}"] .vals`); if(!el || !ind.out) return;
+    el.innerHTML = IND[ind.type].lines.map(l=>{
+      const x = idx<0 ? NaN : ind.out[l.k][idx];
+      const col = l.type==='hist' ? (x>=0 ? 'var(--up)' : 'var(--down)') : lineColor(ind,l);
+      return `<span style="color:${ind.type==='vol' ? 'var(--muted)' : col}">${fmtVal(ind,l,x)}</span>`;
+    }).join('');
+  });
+}
+function addInd(type, p, color, quiet){
+  const def=IND[type]; if(!def) return;
+  const params={}; def.params.forEach(x=>params[x.k]= (p && isFinite(p[x.k])) ? p[x.k] : x.v);
+  const used=S.inds.map(i=>i.color);
+  const ind={uid:++indSeq, type, p:params, color: color || PALETTE.find(c=>!used.includes(c)) || PALETTE[S.inds.length%PALETTE.length]};
+  if(type==='vol' && S.bars.length && S.bars[0].volume==null && !quiet) toast('Dữ liệu này không có cột khối lượng nên Volume sẽ trống.');
+  buildIndSeries(ind); S.inds.push(ind);
+  if(S.vis.length){ computeInd(ind, S.vis, true); syncPanes(); }
+  renderLegends();
+  if(!quiet) save();
+}
+function removeInd(uid){
+  const k=S.inds.findIndex(i=>i.uid===uid); if(k<0) return;
+  const ind=S.inds[k];
+  if(ind.pane){ ind.pane.chart.remove(); ind.pane.el.remove(); }
+  else Object.values(ind.series).forEach(s=>chart.removeSeries(s));
+  S.inds.splice(k,1); volMargins(); closePop(); renderLegends(); save();
+}
+
+/* Menu thêm chỉ báo */
+function buildIndMenu(){
+  const sec=(g,t)=>`<h3>${t}</h3>`+Object.entries(IND).filter(([,d])=>d.group===g)
+    .map(([k,d])=>`<button data-add="${k}" role="menuitem"><b>${esc(d.name)}</b><span>${esc(d.full)}</span></button>`).join('');
+  $('#indMenu').innerHTML = sec('overlay','Trên biểu đồ giá') + sec('pane','Khung riêng bên dưới');
+}
+function toggleIndMenu(force){
+  const m=$('#indMenu'), open = force!=null ? force : m.hidden;
+  m.hidden=!open; $('#btnInd').classList.toggle('active',open); $('#btnInd').setAttribute('aria-expanded',open);
+  if(open){ closePop(); const f=m.querySelector('button'); if(f) f.focus(); }
+}
+$('#btnInd').onclick=e=>{ e.stopPropagation(); toggleIndMenu(); };
+$('#indMenu').addEventListener('click', e=>{
+  const b=e.target.closest('[data-add]'); if(!b) return;
+  addInd(b.dataset.add); toggleIndMenu(false);
+  toast(`Đã thêm ${IND[b.dataset.add].name}. Bấm biểu tượng điều chỉnh cạnh tên để đổi thông số.`);
+});
+
+/* Cài đặt từng chỉ báo */
+function closePop(){ $('#indPop').hidden=true; S._popUid=null; }
+function openPop(ind, anchor){
+  const def=IND[ind.type], pop=$('#indPop');
+  pop.innerHTML = `<h4>${esc(def.name)}</h4>`
+    + def.params.map(x=>`<label>${esc(x.l)}<input class="in num" type="number" data-k="${x.k}" value="${ind.p[x.k]}" min="${x.min}" max="${x.max}" step="${x.step||1}"></label>`).join('')
+    + (ind.type!=='vol' ? `<label>Màu<input type="color" data-k="__color" value="${ind.color}"></label>` : '')
+    + `<div class="row"><button class="btn ghost" data-pop="cancel">Hủy</button><button class="btn primary" data-pop="ok">Áp dụng</button></div>`;
+  pop.hidden=false; S._popUid=ind.uid;
+  const r=anchor.getBoundingClientRect(), w=pop.offsetWidth, h=pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(window.innerWidth-w-8, r.left)) + 'px';
+  pop.style.top = (r.bottom+6+h > window.innerHeight ? Math.max(8, r.top-h-6) : r.bottom+6) + 'px';
+  const f=pop.querySelector('input'); if(f) f.focus();
+}
+$('#indPop').addEventListener('click', e=>{
+  e.stopPropagation();
+  const b=e.target.closest('[data-pop]'); if(!b) return;
+  if(b.dataset.pop==='cancel'){ closePop(); return; }
+  const ind=S.inds.find(i=>i.uid===S._popUid); if(!ind){ closePop(); return; }
+  const def=IND[ind.type];
+  for(const x of def.params){
+    const v=parseFloat($('#indPop').querySelector(`[data-k="${x.k}"]`).value);
+    if(!isFinite(v) || v<x.min || v>x.max){ toast(`${x.l} cần nằm trong khoảng ${x.min}–${x.max}.`); return; }
+    ind.p[x.k] = x.step ? v : Math.round(v);
+  }
+  if(ind.type==='macd' && ind.p.fast>=ind.p.slow){ toast('Chu kỳ nhanh cần nhỏ hơn chu kỳ chậm.'); return; }
+  const c=$('#indPop').querySelector('[data-k="__color"]'); if(c) ind.color=c.value;
+  styleInd(ind); if(S.vis.length) computeInd(ind, S.vis, true);
+  closePop(); renderLegends(); save();
+});
+$('#indPop').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#indPop').querySelector('[data-pop="ok"]').click(); } });
+document.addEventListener('click', e=>{
+  const b=e.target.closest('.ind-item [data-act]');
+  if(b){ e.stopPropagation(); const uid=+b.closest('.ind-item').dataset.uid, ind=S.inds.find(i=>i.uid===uid); if(!ind) return;
+    if(b.dataset.act==='del') removeInd(uid);
+    else if(S._popUid===uid) closePop(); else { toggleIndMenu(false); openPop(ind,b); }
+    return; }
+  if(!e.target.closest('#indMenu') && !$('#indMenu').hidden) toggleIndMenu(false);
+  if(!e.target.closest('#indPop') && !$('#indPop').hidden) closePop();
+});
+buildIndMenu();
+
 /* ---------- Phát lại ---------- */
 function step(){
   if(!S.bars.length) return false;
   if(S.cursor >= S.bars.length-1){ stopPlay(); toast('Đã hết dữ liệu. Hãy chọn vị trí ngẫu nhiên khác hoặc tải dữ liệu mới.'); return false; }
   S.cursor++;
   series.update(currentBar());
+  if(S.inds.length) refreshIndicators(false);
   if(S.position) trackPosition(S.bars[S.cursor]);
   updateHUD();
   return true;
@@ -644,7 +959,9 @@ function stepBack(n){
   const ts = chart.timeScale(), r = ts.getVisibleLogicalRange();
   const v = visible();
   series.setData(v);
+  refreshIndicators(true, v);
   if(r){ const d = oldLen - v.length; ts.setVisibleLogicalRange({from:r.from-d, to:r.to-d}); }
+  syncPanes();
   renderMarkers(); syncLines(); updateHUD();
   if(blocked) toast('Đã dừng tại nến vào lệnh. Đóng lệnh nếu muốn tua lại xa hơn.');
 }
@@ -975,6 +1292,8 @@ document.addEventListener('keydown', e=>{
   else if(e.key==='s'||e.key==='S') openPosition('short');
   else if(e.key==='c'||e.key==='C') closeManual();
   else if(e.key==='l'||e.key==='L') setMode('level');
+  else if(e.key==='i'||e.key==='I') toggleIndMenu();
+  else if(e.key==='Escape' && (!$('#indMenu').hidden || !$('#indPop').hidden)){ toggleIndMenu(false); closePop(); }
   else if(e.key==='Escape' && S.mode) setMode(S.mode);
 });
 
@@ -986,6 +1305,7 @@ load();
 applyTheme();
 $('#nBars').value=S.nBars;
 ['startBal','riskPct','feePct'].forEach((id,i)=>$('#'+id).value=[S.startBalance,S.riskPct,S.feePct][i]);
+(S._indCfg||[]).forEach(c=>{ if(c && IND[c.type]) addInd(c.type, c.p, /^#[0-9a-f]{6}$/i.test(c.color)?c.color:null, true); });
 const seed=(Math.random()*1e9)|0;
 setBars(genSynthetic(S.nBars,seed),'Mô phỏng #'+(seed%10000),3600);
 renderJournal();
